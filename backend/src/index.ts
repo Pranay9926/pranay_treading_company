@@ -1,26 +1,34 @@
-import express from 'express';
-import cors from 'cors';
-import type { Request, Response } from 'express';
-import { config } from './config/env';
-import { registerDbRoutes } from './routes/db';
+import express from "express";
+import cors from "cors";
+import { sequelize } from "./config/dbconfig";
+import { setRoutes } from "./routes";
+     import http from 'http';
+import { initModel } from "./model";
+import swaggerUi from 'swagger-ui-express';
+import { swaggerSpec } from './docs/swagger';
+// import { initializeSocket } from './src/helpers/socket';
 
 const app = express();
-const PORT = config.port;
-const FRONTEND_ORIGIN = config.frontendOrigin;
-
-app.use(cors({
-  origin: FRONTEND_ORIGIN,
-  credentials: true
-}));
 app.use(express.json());
+app.use(cors());
+app.use('/docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
+const server = http.createServer(app);
 
-app.get('/health', (_req: Request, res: Response) => {
-  res.json({ status: 'ok' });
-});
+const port = process.env.PORT || 5001;
 
-// Routes
-registerDbRoutes(app);
+try {
+  initModel(sequelize);
+  sequelize.sync();
+} catch (e) {
+  console.log("Error", e);
 
-app.listen(PORT, () => {
-  console.log(`Backend listening on http://localhost:${PORT}`);
-});
+}
+
+// const io = initializeSocket(server);
+setRoutes(app);
+
+// console.log("Starting Server on Port: ", io);
+
+
+
+server.listen(port, () => console.log(`Server running on ${port}`));
